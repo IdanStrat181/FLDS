@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Barrera Hidrológica Modular</title>
+<style>html{padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}body{margin:0}</style></head><body>
+<style>
+/* Distribución: una columna para celular; escena de corte arriba, controles al alcance del pulgar abajo. */
+:root{
+  --bg:#eef0f2; --panel:#ffffff; --fg:#1c232b; --muted:#566370; --line:#cdd3d9;
+  --soil:#c4cad1; --chamber:#e3e7eb; --struct:#6f7a86; --barrier:#3e4650;
+  --water:#2f80d2; --ok:#2f8f5b; --warn:#d99800; --bad:#d03b3b; --off:#cfd5db;
+  --btn:#1f2a36; --btnfg:#ffffff; --btn2:#e3e8ed; --btn2fg:#1c232b;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#12171c; --panel:#1b222a; --fg:#e8edf2; --muted:#9aa7b4; --line:#34404c;
+    --soil:#3a444e; --chamber:#252d36; --struct:#8b97a3; --barrier:#d3dae1;
+    --water:#4a98e6; --ok:#4cc38a; --warn:#f0b429; --bad:#f06666; --off:#3a444e;
+    --btn:#e8edf2; --btnfg:#12171c; --btn2:#2a333d; --btn2fg:#e8edf2; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12171c; --panel:#1b222a; --fg:#e8edf2; --muted:#9aa7b4; --line:#34404c;
+  --soil:#3a444e; --chamber:#252d36; --struct:#8b97a3; --barrier:#d3dae1;
+  --water:#4a98e6; --ok:#4cc38a; --warn:#f0b429; --bad:#f06666; --off:#3a444e;
+  --btn:#e8edf2; --btnfg:#12171c; --btn2:#2a333d; --btn2fg:#e8edf2; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--fg);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding-block:14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+h1{font-size:1.25rem;line-height:1.2;margin:0;text-wrap:balance}
+.sub{margin:2px 0 0;color:var(--muted);font-size:.875rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+svg{display:block;width:100%;height:auto}
+svg text{font:11px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;fill:var(--fg)}
+svg .halo{stroke:var(--panel);stroke-width:3;paint-order:stroke}
+svg .mut{fill:var(--muted)}
+svg .tp{fill:#fff;fill-opacity:.28}
+svg .sd{fill:#000;fill-opacity:.2}
+svg .sl{fill:#000;fill-opacity:.4}
+svg .tag{font-size:10.5px;font-weight:700}
+svg .hl{fill:none;stroke:#fff;stroke-opacity:.55;stroke-width:1}
+svg .arr{stroke:var(--fg);stroke-width:1.2}
+details.card summary{font-weight:700;min-height:44px;display:flex;align-items:center;cursor:pointer}
+details.card[open] summary{margin-bottom:6px}
+.phys{display:flex;flex-direction:column;gap:8px;margin:0}
+.phys div{background:var(--bg);border-radius:8px;padding:8px 10px;min-width:0}
+.phys dt{font-size:.8125rem;color:var(--muted)}
+.phys dd{margin:0;font-variant-numeric:tabular-nums}
+.phys .v{font-weight:700;font-size:1.05rem}
+.phys .fm{font-size:.75rem;color:var(--muted);overflow-wrap:anywhere}
+
+.status{margin:0;font-weight:600;min-height:2.8em}
+.read{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.read div{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
+.read dt{font-size:.75rem;color:var(--muted)}
+.read dd{margin:0;font-weight:700;font-size:.9rem;font-variant-numeric:tabular-nums}
+.lights{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.lamp{display:flex;align-items:center;gap:6px;font-size:.875rem;color:var(--muted)}
+.lamp i{width:16px;height:16px;border-radius:50%;background:var(--off);border:2px solid var(--line);flex:none}
+.lamp.on{color:var(--fg);font-weight:600}
+.lamp.on i{border-color:transparent}
+.lamp.ok.on i{background:var(--ok)} .lamp.warn.on i{background:var(--warn)} .lamp.bad.on i{background:var(--bad)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button,.seg label{font:inherit}
+button{min-height:48px;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;
+  background:var(--btn2);color:var(--btn2fg)}
+button.main{background:var(--btn);color:var(--btnfg);grid-column:1/-1}
+button:focus-visible,input:focus-visible+span{outline:3px solid var(--water);outline-offset:2px}
+.slider{display:flex;flex-direction:column;gap:4px}
+.slider label{font-size:.875rem;color:var(--muted)}
+input[type=range]{width:100%;height:36px;accent-color:var(--water)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg label{position:relative;display:block}
+.seg input{position:absolute;opacity:0;inset:0;margin:0}
+.seg span{display:block;text-align:center;padding:11px 8px;border-radius:10px;background:var(--btn2);font-weight:600;font-size:.9rem}
+.seg input:checked+span{background:var(--btn);color:var(--btnfg)}
+.foot{font-size:.8125rem;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:reduce){button{transition:none}}
+</style>
+
+<main>
+  <header>
+    <h1>Barrera Hidrológica Modular</h1>
+    <p class="sub">Simulación del río en Pedregal, Piura. Sube el río y mira qué hace la barrera.</p>
+  </header>
+
+  <section class="card" aria-label="Escena en corte">
+    <svg id="scene" viewBox="0 40 300 252" role="img" aria-label="Corte lateral en perspectiva: río a la izquierda, cámara con barrera en la orilla y casas a la derecha, con presión, fuerza y empuje en tiempo real">
+      <defs>
+        <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style="stop-color:var(--water)" stop-opacity=".78"/>
+          <stop offset="1" style="stop-color:var(--water)" stop-opacity="1"/>
+        </linearGradient>
+        <marker id="ah" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L6 3L0 6z" fill="var(--fg)"/></marker>
+        <clipPath id="cAbove"><rect x="0" y="0" width="400" height="157"/></clipPath>
+      </defs>
+      <!-- terreno en perspectiva -->
+      <g data-f="soil" data-c="tp" data-p="96,157 284,157 298,148 110,148"></g>
+      <g data-f="soil" data-c="sd" data-p="284,157 298,148 298,292 284,292"></g>
+      <rect x="96" y="157" width="188" height="135" fill="var(--soil)"/>
+      <rect x="0" y="250" width="96" height="42" fill="var(--soil)"/>
+      <!-- escala vertical -->
+      <g stroke="var(--fg)" opacity=".5"><line x1="0" y1="188" x2="7" y2="188"/><line x1="0" y1="126" x2="7" y2="126"/><line x1="0" y1="64" x2="7" y2="64"/></g>
+      <!-- boca y cámara -->
+      <g data-f="chamber" data-c="sl" data-p="106,157 146,157 160,148 120,148"></g>
+      <rect x="106" y="157" width="40" height="93" fill="var(--chamber)" stroke="var(--struct)" stroke-width="1.5"/>
+      <path id="chW" fill="url(#wg)"/><path id="chH" class="hl"/>
+      <rect id="pipe" x="96" y="172.6" width="10" height="6" fill="var(--off)" stroke="var(--struct)" stroke-width="1"/>
+      <!-- guías y barrera -->
+      <rect x="109" y="86" width="3" height="71" fill="var(--struct)"/>
+      <rect x="140" y="86" width="3" height="71" fill="var(--struct)"/>
+      <rect id="panel" x="113" y="157" width="26" height="93" rx="2" fill="var(--barrier)"/>
+      <g id="pSide" clip-path="url(#cAbove)" data-f="barrier" data-c="sd"></g>
+      <g id="pTop" data-f="barrier" data-c="tp"></g>
+      <!-- casas -->
+      <g data-f="chamber" data-c="sd" data-p="189,105 203,96 224,116 210,125"></g>
+      <g data-f="panel" data-c="sd" data-p="206,125 220,116 220,148 206,157"></g>
+      <g data-f="chamber" data-c="sd" data-p="253,105 267,96 288,116 274,125"></g>
+      <g data-f="panel" data-c="sd" data-p="270,125 284,116 284,148 270,157"></g>
+      <g fill="var(--panel)" stroke="var(--struct)" stroke-width="1.5">
+        <rect x="172" y="125" width="34" height="32"/><path d="M168 125 L189 105 L210 125 Z" fill="var(--chamber)"/>
+        <rect x="236" y="125" width="34" height="32"/><path d="M232 125 L253 105 L274 125 Z" fill="var(--chamber)"/>
+      </g>
+      <!-- agua -->
+      <path id="rv" fill="url(#wg)"/><path id="rvO" fill="url(#wg)"/>
+      <g id="rvTop" data-f="water" data-c="tp"></g><path id="rvH" class="hl"/>
+      <path id="fl" fill="url(#wg)" opacity=".88"/>
+      <g id="fTop" data-f="water" data-c="tp"></g><g id="fSide" data-f="water" data-c="sd"></g><path id="flH" class="hl"/>
+      <!-- gotas -->
+      <circle id="dr0" r="1.7" fill="var(--water)"/><circle id="dr1" r="1.7" fill="var(--water)"/><circle id="dr2" r="1.7" fill="var(--water)"/>
+      <circle id="sp0" r="1.6" fill="var(--water)"/><circle id="sp1" r="1.6" fill="var(--water)"/><circle id="sp2" r="1.6" fill="var(--water)"/><circle id="sp3" r="1.6" fill="var(--water)"/>
+      <!-- referencias -->
+      <text class="halo mut" x="9" y="191">1 m</text><text class="halo mut" x="9" y="129">2 m</text><text class="halo mut" x="9" y="67">3 m</text>
+      <line x1="0" y1="175.6" x2="96" y2="175.6" stroke="var(--fg)" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>
+      <text class="halo" x="34" y="171" font-size="10">se activa a 1,2 m</text>
+      <line x1="96" y1="95" x2="298" y2="95" stroke="var(--fg)" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>
+      <text class="halo" x="294" y="90" text-anchor="end">máximo registrado 2,5 m</text>
+      <!-- física -->
+      <g id="pArrows"><line class="arr" marker-end="url(#ah)"/><line class="arr" marker-end="url(#ah)"/><line class="arr" marker-end="url(#ah)"/><line class="arr" marker-end="url(#ah)"/><line class="arr" marker-end="url(#ah)"/></g>
+      <circle id="fDot" r="3" cx="96" fill="var(--fg)"/>
+      <text class="halo tag" id="tP" x="24" y="0">P</text>
+      <text class="halo tag" id="tF" x="24" y="0">F</text>
+      <line id="eArr" class="arr" x1="126" x2="126" stroke-width="2" marker-end="url(#ah)"/>
+      <text class="halo tag" id="tE" x="151" y="0">E</text>
+      <!-- etiquetas -->
+      <text class="halo" x="34" y="270">Río</text>
+      <text class="halo" x="108" y="264" font-size="10">Cámara</text>
+      <text class="halo" id="tPanel" x="116" y="83">Barrera</text>
+      <line x1="96" y1="276" x2="172" y2="276" stroke="var(--fg)" opacity=".5"/>
+      <line x1="96" y1="272" x2="96" y2="280" stroke="var(--fg)" opacity=".5"/>
+      <line x1="172" y1="272" x2="172" y2="280" stroke="var(--fg)" opacity=".5"/>
+      <text class="halo mut" x="100" y="289" font-size="10">≈ 100 m del río a las casas</text>
+    </svg>
+    <p class="status" id="status" aria-live="polite">El río está bajo. La barrera descansa bajo tierra.</p>
+    <dl class="read">
+      <div><dt>Río</dt><dd id="rLevel">0,80 m</dd></div>
+      <div><dt>Protección</dt><dd id="rTop">1,50 m</dd></div>
+      <div><dt>Casas</dt><dd id="rHouses">Protegidas</dd></div>
+    </dl>
+  </section>
+
+  <section class="card" aria-label="Controles">
+    <div class="btns">
+      <button class="main" id="bUp" type="button">Subir el río</button>
+      <button id="bDown" type="button" style="grid-column:1/-1">Bajar el río</button>
+    </div>
+    <div class="slider" style="margin-top:10px">
+      <label for="lvl">Nivel del río: <output id="lvlOut">0,80</output> m</label>
+      <input id="lvl" type="range" min="0.2" max="3" step="0.05" value="0.8">
+    </div>
+    <div class="seg" style="margin-top:6px" role="radiogroup" aria-label="Tipo de defensa">
+      <label><input type="radio" name="mode" id="mBar" value="bar" checked><span>Con barrera</span></label>
+      <label><input type="radio" name="mode" id="mFix" value="fix"><span>Dique fijo actual</span></label>
+    </div>
+  </section>
+
+  <details class="card" aria-label="Fórmulas">
+    <summary>Ver fórmulas y datos físicos</summary>
+    <dl class="phys">
+      <div><dt>Presión del agua del río (en el fondo)</dt><dd class="v" id="pP">0 kPa</dd><dd class="fm" id="pPf"></dd></div>
+      <div><dt>Fuerza lateral sobre la barrera (por metro)</dt><dd class="v" id="pF">0 kN/m</dd><dd class="fm" id="pFf"></dd></div>
+      <div><dt>Empuje que levanta el panel (por metro)</dt><dd class="v" id="pE">0 kN/m</dd><dd class="fm" id="pEf"></dd></div>
+    </dl>
+    <p class="foot" style="margin-top:8px">ρ = 1000 kg/m³, g = 9,81 m/s², h medida desde el piso de la cámara. V = volumen de agua bajo el panel (0,5 m de espesor por metro de largo). En el dibujo: P son las flechas contra la orilla, F el punto de aplicación a h/3 y E la flecha dentro de la cámara.</p>
+  </details>
+
+  <section class="card" aria-label="Alerta">
+    <div class="lights" id="lights">
+      <span class="lamp ok" id="lOk"><i></i>Normal</span>
+      <span class="lamp warn" id="lWarn"><i></i>Barrera activa</span>
+      <span class="lamp bad" id="lBad"><i></i>Rebose</span>
+      <button id="bSnd" type="button" style="min-height:40px;margin-left:auto">Sonido: apagado</button>
+    </div>
+  </section>
+
+  <p class="foot">Alturas de ejemplo tomadas del guion: la barrera se activa con el río a 1,2 m y está pensada para el máximo registrado, 2,5 m. Es una maqueta didáctica, no un modelo hidráulico del río Piura.</p>
+</main>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var Y0=250, PX=62, DX=14, DY=-9;
+  var Y=function(m){return Y0-PX*m};
+  var CRIT=1.2, GROUND=1.5, RHO=1000, G=9.81, T=0.5;
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var k=reduce?8:1;
+  var level=0.8, target=null, f=0, mode='bar', sound=false, ctx=null, lastRed=false, lastMsg='';
+  var lv=level, lvV=0, fd=0, fdV=0, ag=0, tt=0;
+  var fmt=function(v){return v.toFixed(2).replace('.',',')};
+  var fm1=function(v){return v.toFixed(1).replace('.',',')};
+  var NS='http://www.w3.org/2000/svg';
+  var pts=function(a){return a.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' ')};
+  document.querySelectorAll('g[data-f]').forEach(function(g){
+    var b=document.createElementNS(NS,'polygon');b.setAttribute('fill','var(--'+g.getAttribute('data-f')+')');
+    var o=document.createElementNS(NS,'polygon');o.setAttribute('class',g.getAttribute('data-c'));
+    g.appendChild(b);g.appendChild(o);
+    var p=g.getAttribute('data-p');
+    if(p){b.setAttribute('points',p);o.setAttribute('points',p)}
+  });
+  function setF(id,a){var p=pts(a);var c=$(id).children;c[0].setAttribute('points',p);c[1].setAttribute('points',p)}
+  function clearF(id){setF(id,[[0,0],[0,0],[0,0]])}
+  var amp=0;
+  function wave(x0,x1,y,ph){
+    var a=[],n=Math.max(2,Math.round((x1-x0)/6));
+    for(var i=0;i<=n;i++){var x=x0+(x1-x0)*i/n;
+      a.push([x,y+amp*(Math.sin(x*0.11+tt*2.4+ph)+0.5*Math.sin(x*0.23-tt*1.9))])}
+    return a;
+  }
+  function fill(id,hid,w,bottom){
+    var d='M'+w[0][0].toFixed(1)+','+bottom+' L'+w.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' L')+' L'+w[w.length-1][0].toFixed(1)+','+bottom+'Z';
+    $(id).setAttribute('d',d);
+    if(hid)$(hid).setAttribute('d','M'+w.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' L'));
+  }
+  function none(id,hid){$(id).setAttribute('d','');if(hid)$(hid).setAttribute('d','')}
+
+  function beep(){
+    if(!sound)return;
+    try{
+      ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+      var t=ctx.currentTime;
+      for(var i=0;i<3;i++){
+        var o=ctx.createOscillator(),g=ctx.createGain();
+        o.type='square';o.frequency.value=i%2?740:880;
+        g.gain.setValueAtTime(0.0001,t+i*0.28);g.gain.exponentialRampToValueAtTime(0.15,t+i*0.28+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.28+0.22);
+        o.connect(g);g.connect(ctx.destination);o.start(t+i*0.28);o.stop(t+i*0.28+0.24);
+      }
+    }catch(e){}
+  }
+
+  function spring(x,v,tg,kk,c,dt){
+    var a=kk*(tg-x)-c*v; v+=a*dt; x+=v*dt; return [x,v];
+  }
+
+  function step(dt){
+    if(target!==null){
+      var d=target-level, v=0.4*k*dt;
+      if(Math.abs(d)<=v){level=target;target=null}else level+=Math.sign(d)*v;
+      $('lvl').value=level;
+    }
+    var want=(mode==='bar'&&level>=CRIT)?1:0;
+    var rate=(want?0.5:0.35)*k*dt;
+    if(Math.abs(want-f)<=rate)f=want;else f+=Math.sign(want-f)*rate;
+    if(reduce){lv=level;lvV=0;fd=f;fdV=0}
+    else{
+      var r=spring(lv,lvV,level,60,9,dt);lv=r[0];lvV=r[1];
+      r=spring(fd,fdV,f,40,5,dt);fd=Math.max(0,r[0]);fdV=r[1];
+      if(lv<0.05)lv=0.05;
+    }
+    tt+=dt;
+    var tg=Math.min(1,(Math.abs(lvV)+Math.abs(fdV))*1.6+((lv>GROUND+fd+0.001)?0.25:0));
+    ag+=(tg-ag)*Math.min(1,dt*5);
+    amp=reduce?0:0.7+ag*3;
+  }
+
+  function render(){
+    var top=GROUND+f, spill=level>top+0.001, flood=spill?level-top:0;
+    var topD=GROUND+fd, spillD=lv>topD+0.001, floodD=spillD?lv-topD:0;
+    var yw=Y(lv), xr=96+(lv>GROUND?(spillD?50:17):0);
+    // río (frente) y arriba del terreno
+    var w=wave(0,96,yw,0);
+    fill('rv','',w,Y0);
+    if(lv>GROUND){
+      var w2=wave(96,xr,yw,0);
+      fill('rvO','',w2,157);
+      var all=wave(0,xr,yw,0);
+      $('rvH').setAttribute('d','M'+all.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' L'));
+      setF('rvTop',all.concat([[xr+DX,yw+DY],[DX,yw+DY]]));
+    }else{
+      none('rvO','');
+      $('rvH').setAttribute('d','M'+w.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' L'));
+      setF('rvTop',w.concat([[96,yw+DY],[DX,yw+DY]]));
+    }
+    // cámara
+    if(fd>0.004){
+      var amp0=amp;amp=amp*0.7;
+      var cw=wave(107,145,Y(fd),1.3);
+      amp=amp0;
+      fill('chW','chH',cw,Y0);
+    }else none('chW','chH');
+    // panel
+    var yt=Y(topD), yb=yt+93;
+    $('panel').setAttribute('y',yt);
+    setF('pTop',[[113,yt],[139,yt],[139+DX,yt+DY],[113+DX,yt+DY]]);
+    setF('pSide',[[139,yt],[139+DX,yt+DY],[139+DX,yb+DY],[139,yb]]);
+    $('pipe').setAttribute('fill',(mode==='bar'&&level>=CRIT)?'var(--water)':'var(--off)');
+    $('tPanel').textContent=mode==='bar'?'Barrera':'Dique fijo';
+    $('tPanel').setAttribute('y',Math.max(yt-6,50));
+    // inundación de casas
+    var yf=157-PX*floodD;
+    if(floodD>0.005){
+      var fw=wave(146,284,yf,2);
+      fill('fl','flH',fw,157);
+      setF('fTop',fw.concat([[284+DX,yf+DY],[146+DX,yf+DY]]));
+      setF('fSide',[[284,yf],[284+DX,yf+DY],[284+DX,148],[284,157]]);
+    }else{none('fl','flH');clearF('fTop');clearF('fSide')}
+    // gotas de llenado
+    var filling=(mode==='bar'&&level>=CRIT&&fd<0.98&&!reduce&&Y(fd)>178);
+    for(var i=0;i<3;i++){
+      var c=$('dr'+i);
+      if(filling){var p=(tt*1.3+i/3)%1;c.setAttribute('cx',108);c.setAttribute('cy',178+(Y(fd)-178)*p*p);c.setAttribute('visibility','visible')}
+      else c.setAttribute('visibility','hidden');
+    }
+    // salpicadura al rebosar
+    for(var j=0;j<4;j++){
+      var s=$('sp'+j);
+      if(spillD&&!reduce){var q=(tt*1.1+j/4)%1;
+        s.setAttribute('cx',116+(26+j*9)*q);s.setAttribute('cy',yt-6-38*q+40*q*q);s.setAttribute('visibility','visible')}
+      else s.setAttribute('visibility','hidden');
+    }
+    // física (valores reales) y su dibujo
+    var Pk=RHO*G*level/1000, Fk=0.5*RHO*G*level*level/1000, V=T*f, Ek=RHO*G*V/1000;
+    var PkD=RHO*G*lv/1000, span=Y0-yw, pw=PkD*1.3;
+    var ar=$('pArrows').children;
+    for(var a=0;a<5;a++){
+      var fr=(a+1)/5.5, len=pw*fr, yy=yw+span*fr;
+      var L=ar[a];
+      if(len<3||lv<0.3){L.setAttribute('visibility','hidden')}
+      else{L.setAttribute('visibility','visible');L.setAttribute('x1',96-len);L.setAttribute('x2',94.5);L.setAttribute('y1',yy);L.setAttribute('y2',yy)}
+    }
+    var showTags=lv>=0.7;
+    var yF=Y(lv/3);
+    $('fDot').setAttribute('cy',yF);$('fDot').setAttribute('visibility',lv>=0.3?'visible':'hidden');
+    $('tP').textContent='P = '+fm1(Pk)+' kPa';$('tP').setAttribute('y',Math.min(yw+14,236));$('tP').setAttribute('visibility',showTags?'visible':'hidden');
+    $('tF').textContent='F = '+fm1(Fk)+' kN/m';$('tF').setAttribute('y',Math.min(yF+4,244));$('tF').setAttribute('visibility',showTags?'visible':'hidden');
+    var showE=fd>0.22;
+    $('tE').textContent='E = '+fm1(Ek)+' kN/m';$('tE').setAttribute('y',Y(fd)+16);$('tE').setAttribute('visibility',showE?'visible':'hidden');
+    var e=$('eArr');
+    if(showE){e.setAttribute('visibility','visible');e.setAttribute('y1',Y(fd)+Math.min(42,PX*fd*0.8));e.setAttribute('y2',Y(fd)+4)}
+    else e.setAttribute('visibility','hidden');
+    $('pP').textContent=fm1(Pk)+' kPa';
+    $('pPf').textContent='P = ρ·g·h = 1000 × 9,81 × '+fmt(level)+' m';
+    $('pF').textContent=fm1(Fk)+' kN/m';
+    $('pFf').textContent='F = ½·ρ·g·h² = ½ × 1000 × 9,81 × '+fmt(level)+'²';
+    $('pE').textContent=fm1(Ek)+' kN/m';
+    $('pEf').textContent='E = ρ·g·V = 1000 × 9,81 × '+fmt(V)+' m³';
+    // lecturas
+    $('rLevel').textContent=fmt(level)+' m';
+    $('rTop').textContent=fmt(top)+' m';
+    $('rHouses').textContent=flood>0.03?'Inundadas':'Protegidas';
+    $('lvlOut').textContent=fmt(level);
+    // alerta
+    var red=mode==='bar'&&spill, warn=mode==='bar'&&level>=CRIT&&!red, ok=mode==='bar'&&!warn&&!red;
+    $('lOk').classList.toggle('on',ok);$('lWarn').classList.toggle('on',warn);$('lBad').classList.toggle('on',red);
+    if(red&&!lastRed)beep();
+    lastRed=red;
+    var m;
+    if(mode==='fix'){
+      m=level>GROUND?'El agua pasa por encima del dique fijo y entra a las casas.':'El dique fijo aguanta hasta 1,5 m. No avisa ni se adapta.';
+    }else if(red){
+      m='Rebose: el agua superó el máximo registrado de 2,5 m. Alerta roja, hay que evacuar.';
+    }else if(level<CRIT){
+      m=f>0.02?'El río bajó: la cámara se vacía y la barrera se guarda.':'El río está bajo. La barrera descansa bajo tierra.';
+    }else if(f<0.99){
+      m='El agua entra a la cámara y la barrera empieza a subir sola.';
+    }else{
+      m='Barrera arriba: el río no pasa. Llega hasta el máximo registrado (2,5 m).';
+    }
+    if(m!==lastMsg){$('status').textContent=m;lastMsg=m}
+  }
+
+  var last=performance.now();
+  function tick(now){
+    var dt=Math.min(0.05,(now-last)/1000);last=now;
+    step(dt);render();requestAnimationFrame(tick);
+  }
+
+  $('bUp').addEventListener('click',function(){target=2.0});
+  $('bDown').addEventListener('click',function(){target=0.4});
+  $('lvl').addEventListener('input',function(e){level=parseFloat(e.target.value);target=null});
+  document.querySelectorAll('input[name=mode]').forEach(function(r){
+    r.addEventListener('change',function(){mode=r.value;lastRed=false;})
+  });
+  $('bSnd').addEventListener('click',function(){
+    sound=!sound;$('bSnd').textContent='Sonido: '+(sound?'encendido':'apagado');
+    if(sound)beep();
+  });
+  render();requestAnimationFrame(tick);
+})();
+</script>
+
+</body></html>
