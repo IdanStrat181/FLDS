@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Barrera Hidrológica Modular</title>
+<style>html{padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}body{margin:0}</style></head><body>
+<style>
+/* Distribución: una columna para celular; escena de corte arriba, controles al alcance del pulgar abajo. */
+:root{
+  --bg:#eef0f2; --panel:#ffffff; --fg:#1c232b; --muted:#566370; --line:#cdd3d9;
+  --soil:#c4cad1; --chamber:#e3e7eb; --struct:#6f7a86; --barrier:#3e4650;
+  --water:#2f80d2; --ok:#2f8f5b; --warn:#d99800; --bad:#d03b3b; --off:#cfd5db;
+  --btn:#1f2a36; --btnfg:#ffffff; --btn2:#e3e8ed; --btn2fg:#1c232b;
+  --concrete:#a3afba; --seal:#1b2733; --steel:#d3deea; --land:#e1e9f0; --city:#c5d3df; --roadc:#6f8aa3; --neon:#52c7ff; --stage:#07172a;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#12171c; --panel:#1b222a; --fg:#e8edf2; --muted:#9aa7b4; --line:#34404c;
+    --soil:#3a444e; --chamber:#252d36; --struct:#8b97a3; --barrier:#d3dae1;
+    --water:#4a98e6; --ok:#4cc38a; --warn:#f0b429; --bad:#f06666; --off:#3a444e;
+    --btn:#e8edf2; --btnfg:#12171c; --btn2:#2a333d; --btn2fg:#e8edf2; color-scheme:dark;
+    --concrete:#6b7b8b; --seal:#0b1117; --steel:#aebdcc; --land:#1a2531; --city:#2b3a4a; --roadc:#5d7890;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12171c; --panel:#1b222a; --fg:#e8edf2; --muted:#9aa7b4; --line:#34404c;
+  --soil:#3a444e; --chamber:#252d36; --struct:#8b97a3; --barrier:#d3dae1;
+  --water:#4a98e6; --ok:#4cc38a; --warn:#f0b429; --bad:#f06666; --off:#3a444e;
+  --btn:#e8edf2; --btnfg:#12171c; --btn2:#2a333d; --btn2fg:#e8edf2; color-scheme:dark;
+  --concrete:#6b7b8b; --seal:#0b1117; --steel:#aebdcc; --land:#1a2531; --city:#2b3a4a; --roadc:#5d7890;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--fg);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding-block:14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+h1{font-size:1.25rem;line-height:1.2;margin:0;text-wrap:balance}
+.sub{margin:2px 0 0;color:var(--muted);font-size:.875rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+svg{display:block;width:100%;height:auto}
+svg text{font:11px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;fill:var(--fg)}
+svg .halo{stroke:var(--panel);stroke-width:3;paint-order:stroke}
+#map .halo{stroke:var(--land);stroke-width:8}
+svg .mut{fill:var(--muted)}
+svg .tp{fill:#fff;fill-opacity:.28}
+svg .sd{fill:#000;fill-opacity:.2}
+svg .sl{fill:#000;fill-opacity:.4}
+svg .mt{font-size:30px;font-weight:700}
+svg .ml{font-size:26px}
+svg .mk circle{fill:var(--panel);stroke:var(--fg);stroke-width:1}
+svg .mk text{font-size:8px;font-weight:700;fill:var(--fg)}
+svg .mk .mn{font-size:9px;font-weight:600}
+svg .tag{font-size:10.5px;font-weight:700}
+svg .hl{fill:none;stroke:#fff;stroke-opacity:.55;stroke-width:1}
+svg .arr{stroke:var(--fg);stroke-width:1.2}
+details.card summary{font-weight:700;min-height:44px;display:flex;align-items:center;cursor:pointer}
+details.card[open] summary{margin-bottom:6px}
+.phys{display:flex;flex-direction:column;gap:8px;margin:0}
+.phys div{background:var(--bg);border-radius:8px;padding:8px 10px;min-width:0}
+.phys dt{font-size:.8125rem;color:var(--muted)}
+.phys dd{margin:0;font-variant-numeric:tabular-nums}
+.phys .v{font-weight:700;font-size:1.05rem}
+.phys .fm{font-size:.75rem;color:var(--muted);overflow-wrap:anywhere}
+
+.status{margin:0;font-weight:600;min-height:2.8em}
+.read{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.read div{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
+.read dt{font-size:.75rem;color:var(--muted)}
+.read dd{margin:0;font-weight:700;font-size:.9rem;font-variant-numeric:tabular-nums}
+.lights{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.lamp{display:flex;align-items:center;gap:6px;font-size:.875rem;color:var(--muted)}
+.lamp i{width:16px;height:16px;border-radius:50%;background:var(--off);border:2px solid var(--line);flex:none}
+.lamp.on{color:var(--fg);font-weight:600}
+.lamp.on i{border-color:transparent}
+.lamp.ok.on i{background:var(--ok)} .lamp.warn.on i{background:var(--warn)} .lamp.bad.on i{background:var(--bad)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button,.seg label{font:inherit}
+button{min-height:48px;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;
+  background:var(--btn2);color:var(--btn2fg)}
+button.main{background:var(--btn);color:var(--btnfg);grid-column:1/-1}
+button:focus-visible,input:focus-visible+span{outline:3px solid var(--water);outline-offset:2px}
+.slider{display:flex;flex-direction:column;gap:4px}
+.slider label{font-size:.875rem;color:var(--muted)}
+input[type=range]{width:100%;height:36px;accent-color:var(--water)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg label{position:relative;display:block}
+.seg input{position:absolute;opacity:0;inset:0;margin:0}
+.seg span{display:block;text-align:center;padding:11px 8px;border-radius:10px;background:var(--btn2);font-weight:600;font-size:.9rem}
+.seg input:checked+span{background:var(--btn);color:var(--btnfg)}
+.foot{font-size:.8125rem;color:var(--muted);margin:0}
+.stage{position:relative;display:grid;border-radius:8px;background:transparent;transition:background .35s}
+.stage.dark{background:var(--stage)}
+.stage>svg{grid-area:1/1;min-width:0}
+.stage>svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.viewsw{margin-bottom:8px}
+.mapinfo{margin:0;font-size:.875rem;color:var(--muted);min-height:1.3em}
+.mats{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.mats li{display:flex;gap:10px;align-items:flex-start;font-size:.875rem;line-height:1.35;min-width:0}
+.mats span{min-width:0}
+.sw{flex:none;width:24px;height:24px;border-radius:6px;border:1px solid var(--line);display:grid;place-items:center;font-size:.75rem;color:var(--fg)}
+.flow{animation:flow 2.2s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-60}}
+@media (prefers-reduced-motion:reduce){button{transition:none}.flow{animation:none}.stage{transition:none}}
+</style>
+
+<main>
+  <header>
+    <h1>Barrera Hidrológica Modular</h1>
+    <p class="sub">Simulación del río en Pedregal, Piura. Sube el río y mira qué hace la barrera.</p>
+  </header>
+
+  <section class="card" aria-label="Escena en corte">
+    <div class="seg viewsw" role="radiogroup" aria-label="Vista de la simulación">
+      <label><input type="radio" name="view" id="vCorte" value="corte" checked><span>Corte (de lado)</span></label>
+      <label><input type="radio" name="view" id="vMapa" value="mapa"><span>Mapa (desde arriba)</span></label>
+    </div>
+    <div class="stage" id="stage">
+    <svg id="scene" viewBox="0 40 300 252" role="img" aria-label="Corte lateral en perspectiva: río a la izquierda, cámara con rampa de barrera en la orilla y casas a la derecha, con presión, fuerza, empuje y materiales">
+      <defs>
+        <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style="stop-color:var(--water)" stop-opacity=".78"/>
+          <stop offset="1" style="stop-color:var(--water)" stop-opacity="1"/>
+        </linearGradient>
+        <marker id="ah" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L6 3L0 6z" fill="var(--fg)"/></marker>
+        <clipPath id="cAbove"><rect x="0" y="0" width="400" height="157"/></clipPath>
+        <clipPath id="cCh"><polygon points="106,157 146,157 146,250 106,250"/></clipPath>
+        <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="var(--fg)" stroke-opacity=".35" stroke-width="1"/></pattern>
+      </defs>
+      <!-- terreno en perspectiva -->
+      <g data-f="soil" data-c="tp" data-p="96,157 284,157 298,148 110,148"></g>
+      <g data-f="soil" data-c="sd" data-p="284,157 298,148 298,292 284,292"></g>
+      <rect x="96" y="157" width="188" height="135" fill="var(--soil)"/>
+      <rect x="0" y="250" width="96" height="42" fill="var(--soil)"/>
+      <!-- escala vertical -->
+      <g stroke="var(--fg)" opacity=".5"><line x1="0" y1="188" x2="7" y2="188"/><line x1="0" y1="126" x2="7" y2="126"/><line x1="0" y1="64" x2="7" y2="64"/></g>
+      <!-- boca y cámara inclinada -->
+      <g data-f="chamber" data-c="sl" data-p="106,157 146,157 160,148 120,148"></g>
+      <polygon points="106,157 146,157 146,250 106,250" fill="var(--chamber)" stroke="var(--struct)" stroke-width="1"/>
+      <path id="chW" fill="url(#wg)" clip-path="url(#cCh)"/><path id="chH" class="hl" clip-path="url(#cCh)"/>
+      <!-- cimentación y muros: concreto armado -->
+      <polygon points="103,157 106,157 106,250 103,250" fill="var(--concrete)" stroke="var(--struct)" stroke-width=".6"/>
+      <polygon points="146,157 149,157 149,250 146,250" fill="var(--concrete)" stroke="var(--struct)" stroke-width=".6"/>
+      <polygon points="100,250 152,250 152,259 100,259" fill="var(--concrete)" stroke="var(--struct)" stroke-width=".6"/>
+      <polygon points="100,250 152,250 152,259 100,259" fill="url(#hatch)"/>
+      <rect id="pipe" x="96" y="172.6" width="10" height="6" fill="var(--off)" stroke="var(--struct)" stroke-width="1"/>
+      <!-- guías de acero inoxidable (inclinadas) -->
+      <polygon points="106,86 111,86 111,157 106,157" fill="var(--steel)" stroke="var(--struct)" stroke-width=".9"/>
+      <polygon points="141,86 146,86 146,157 141,157" fill="var(--steel)" stroke="var(--struct)" stroke-width=".9"/>
+      <rect x="104.5" y="84" width="8" height="3" rx="1" fill="var(--steel)" stroke="var(--struct)" stroke-width=".6"/>
+      <rect x="139.5" y="84" width="8" height="3" rx="1" fill="var(--steel)" stroke="var(--struct)" stroke-width=".6"/>
+      <!-- barrera en rampa -->
+      <polygon id="panel" fill="var(--barrier)" stroke="var(--struct)" stroke-width=".6"/>
+      <polygon id="sealL" fill="var(--seal)" stroke="var(--fg)" stroke-opacity=".35" stroke-width=".4"/>
+      <polygon id="sealR" fill="var(--seal)" stroke="var(--fg)" stroke-opacity=".35" stroke-width=".4"/>
+      <g id="pSide" clip-path="url(#cAbove)" data-f="barrier" data-c="sd"></g>
+      <g id="pTop" data-f="barrier" data-c="tp"></g>
+      <!-- casas -->
+      <g data-f="chamber" data-c="sd" data-p="197,105 211,96 232,116 218,125"></g>
+      <g data-f="panel" data-c="sd" data-p="214,125 228,116 228,148 214,157"></g>
+      <g data-f="chamber" data-c="sd" data-p="261,105 275,96 296,116 282,125"></g>
+      <g data-f="panel" data-c="sd" data-p="278,125 292,116 292,148 278,157"></g>
+      <g fill="var(--panel)" stroke="var(--struct)" stroke-width="1.5">
+        <rect x="180" y="125" width="34" height="32"/><path d="M176 125 L197 105 L218 125 Z" fill="var(--chamber)"/>
+        <rect x="244" y="125" width="34" height="32"/><path d="M240 125 L261 105 L282 125 Z" fill="var(--chamber)"/>
+      </g>
+      <!-- agua -->
+      <path id="rv" fill="url(#wg)"/><path id="rvO" fill="url(#wg)"/>
+      <g id="rvTop" data-f="water" data-c="tp"></g><path id="rvH" class="hl"/>
+      <path id="fl" fill="url(#wg)" opacity=".88"/>
+      <g id="fTop" data-f="water" data-c="tp"></g><g id="fSide" data-f="water" data-c="sd"></g><path id="flH" class="hl"/>
+      <!-- gotas -->
+      <circle id="dr0" r="1.7" fill="var(--water)"/><circle id="dr1" r="1.7" fill="var(--water)"/><circle id="dr2" r="1.7" fill="var(--water)"/>
+      <circle id="sp0" r="1.6" fill="var(--water)"/><circle id="sp1" r="1.6" fill="var(--water)"/><circle id="sp2" r="1.6" fill="var(--water)"/><circle id="sp3" r="1.6" fill="var(--water)"/>
+      <!-- referencias -->
+      <text class="halo mut" x="9" y="191">1 m</text><text class="halo mut" x="9" y="129">2 m</text><text class="halo mut" x="9" y="67">3 m</text>
+      <line x1="0" y1="175.6" x2="96" y2="175.6" stroke="var(--fg)" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>
+      <text class="halo" x="34" y="171" font-size="10">se activa a 1,2 m</text>
+      <line x1="96" y1="95" x2="298" y2="95" stroke="var(--fg)" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>
+      <text class="halo" x="294" y="90" text-anchor="end">máximo registrado 2,5 m</text>
+      <!-- física -->
+      <g id="pArrows"><line class="arr" marker-end="url(#ah)"/><line class="arr" marker-end="url(#ah)"/><line class="arr" marker-end="url(#ah)"/><line class="arr" marker-end="url(#ah)"/><line class="arr" marker-end="url(#ah)"/></g>
+      <circle id="fDot" r="3" cx="96" fill="var(--fg)"/>
+      <text class="halo tag" id="tP" x="24" y="0">P</text>
+      <text class="halo tag" id="tF" x="24" y="0">F</text>
+      <line id="eArr" class="arr" y1="0" y2="0" stroke-width="2" marker-end="url(#ah)"/>
+      <text class="halo tag" id="tE" x="172" y="0">E</text>
+      <!-- etiquetas -->
+      <text class="halo" x="38" y="241">Río</text>
+      <text class="halo" id="tPanel" x="130" y="83">Barrera</text>
+      <text class="halo" x="122" y="283" font-size="9.5">Cámara y base</text>
+    </svg>
+    <svg id="map" viewBox="0 0 977 821" role="img" aria-label="Vista desde arriba del río Piura entre Pedregal Chico y Catacaos, con la barrera en ambas orillas" style="visibility:hidden;opacity:0">
+      <defs><clipPath id="mClip"><path id="mClipP"/></clipPath></defs>
+      <rect width="977" height="821" fill="var(--land)"/>
+      <path d="M0,11 L0,72 L64,73 L62,127 L77,145 L80,217 L103,236 L104,271 L160,264 L164,194 L127,194 L126,179 L150,160 L149,122 L139,114 L139,100 L155,90 L155,71 L186,20 L188,0 L71,0 L70,11Z M874,70 L854,70 L841,58 L841,40 L820,40 L803,26 L801,0 L736,0 L736,12 L723,25 L712,25 L712,37 L682,69 L548,118 L536,155 L498,155 L503,201 L487,240 L478,243 L478,268 L510,271 L521,282 L521,298 L488,339 L463,339 L433,361 L414,388 L414,420 L392,451 L347,460 L351,528 L375,528 L398,493 L413,483 L549,477 L551,433 L587,430 L599,401 L643,367 L666,360 L672,344 L689,344 L691,333 L754,326 L774,287 L780,255 L791,252 L797,216 L853,207 L853,169 L891,168 L907,148 L906,115 L874,95Z M402,617 L402,650 L375,668 L372,696 L352,714 L352,738 L446,741 L447,751 L458,752 L458,803 L467,806 L467,827 L442,850 L363,859 L363,879 L521,879 L524,762 L541,744 L541,720 L534,717 L534,703 L541,702 L540,662 L498,654 L440,657 L426,640 L426,617Z" fill="var(--city)" stroke="var(--line)" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M885,0 C855,29 743,128 705,175 C667,222 668,251 655,280 C642,309 640,331 630,350 C620,369 613,380 598,392 C583,404 556,415 540,425 C524,435 522,440 500,450 C478,460 428,470 405,482 C382,494 374,506 360,522 C346,538 340,552 322,580 C304,608 270,658 255,690 C240,722 236,742 230,770 C224,798 218,845 216,860" fill="none" stroke="var(--roadc)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M885,0 C855,29 743,128 705,175 C667,222 668,251 655,280 C642,309 640,331 630,350 C620,369 613,380 598,392 C583,404 556,415 540,425 C524,435 522,440 500,450 C478,460 428,470 405,482 C382,494 374,506 360,522 C346,538 340,552 322,580 C304,608 270,658 255,690 C240,722 236,742 230,770 C224,798 218,845 216,860" fill="none" stroke="var(--panel)" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+      <path id="mOut" fill="var(--water)" opacity=".5"/>
+      <path id="mIn" fill="var(--water)"/>
+      <path id="mFlow" class="flow" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3" stroke-dasharray="14 46" stroke-linecap="round"/>
+      <g clip-path="url(#mClip)"><path d="M0,11 L0,72 L64,73 L62,127 L77,145 L80,217 L103,236 L104,271 L160,264 L164,194 L127,194 L126,179 L150,160 L149,122 L139,114 L139,100 L155,90 L155,71 L186,20 L188,0 L71,0 L70,11Z M874,70 L854,70 L841,58 L841,40 L820,40 L803,26 L801,0 L736,0 L736,12 L723,25 L712,25 L712,37 L682,69 L548,118 L536,155 L498,155 L503,201 L487,240 L478,243 L478,268 L510,271 L521,282 L521,298 L488,339 L463,339 L433,361 L414,388 L414,420 L392,451 L347,460 L351,528 L375,528 L398,493 L413,483 L549,477 L551,433 L587,430 L599,401 L643,367 L666,360 L672,344 L689,344 L691,333 L754,326 L774,287 L780,255 L791,252 L797,216 L853,207 L853,169 L891,168 L907,148 L906,115 L874,95Z M402,617 L402,650 L375,668 L372,696 L352,714 L352,738 L446,741 L447,751 L458,752 L458,803 L467,806 L467,827 L442,850 L363,859 L363,879 L521,879 L524,762 L541,744 L541,720 L534,717 L534,703 L541,702 L540,662 L498,654 L440,657 L426,640 L426,617Z" fill="var(--water)" opacity=".7"/></g>
+      <path id="bL" fill="none" stroke="var(--barrier)" stroke-linejoin="round"/>
+      <path id="bR" fill="none" stroke="var(--barrier)" stroke-linejoin="round"/>
+      <text class="halo mt" x="282" y="340">Río Piura</text>
+      <text class="halo mt" x="610" y="178">Catacaos</text>
+      <circle cx="600" cy="184" r="8" fill="var(--fg)"/>
+      <text class="halo mt" x="408" y="676">Pedregal Chico</text>
+      <circle cx="608" cy="262" r="8" fill="var(--fg)"/>
+      <text class="halo mt" x="624" y="272">Pedregal Grande</text>
+      <circle cx="388" cy="678" r="8" fill="var(--fg)"/>
+      <line x1="610" y1="786" x2="670" y2="786" stroke="var(--barrier)" stroke-width="9" stroke-dasharray="16 4"/>
+      <text class="halo ml" x="682" y="796">Barrera en ambas orillas</text>
+    </svg>
+    <svg id="ovA" class="ov" viewBox="0 40 300 252" aria-hidden="true"></svg>
+    <svg id="ovB" class="ov" viewBox="0 0 977 821" aria-hidden="true"></svg>
+    </div>
+    <p class="status" id="status" aria-live="polite">El río está bajo. La barrera descansa bajo tierra.</p>
+    <p class="mapinfo" id="mapInfo" hidden></p>
+    <dl class="read">
+      <div><dt>Río</dt><dd id="rLevel">0,80 m</dd></div>
+      <div><dt>Protección</dt><dd id="rTop">1,50 m</dd></div>
+      <div><dt>Casas</dt><dd id="rHouses">Protegidas</dd></div>
+    </dl>
+  </section>
+
+  <section class="card" aria-label="Controles">
+    <div class="btns">
+      <button class="main" id="bUp" type="button">Subir el río</button>
+      <button id="bDown" type="button" style="grid-column:1/-1">Bajar el río</button>
+    </div>
+    <div class="slider" style="margin-top:10px">
+      <label for="lvl">Nivel del río: <output id="lvlOut">0,80</output> m</label>
+      <input id="lvl" type="range" min="0.2" max="3" step="0.05" value="0.8">
+    </div>
+    <div class="seg" style="margin-top:6px" role="radiogroup" aria-label="Tipo de defensa">
+      <label><input type="radio" name="mode" id="mBar" value="bar" checked><span>Con barrera</span></label>
+      <label><input type="radio" name="mode" id="mFix" value="fix"><span>Dique fijo actual</span></label>
+    </div>
+  </section>
+
+  <details class="card" aria-label="Fórmulas">
+    <summary>Ver fórmulas y datos físicos</summary>
+    <dl class="phys">
+      <div><dt>Presión del agua del río (en el fondo)</dt><dd class="v" id="pP">0 kPa</dd><dd class="fm" id="pPf"></dd></div>
+      <div><dt>Fuerza lateral sobre la barrera (por metro)</dt><dd class="v" id="pF">0 kN/m</dd><dd class="fm" id="pFf"></dd></div>
+      <div><dt>Empuje que levanta el panel (por metro)</dt><dd class="v" id="pE">0 kN/m</dd><dd class="fm" id="pEf"></dd></div>
+    </dl>
+    <p class="foot" style="margin-top:8px">ρ = 1000 kg/m³, g = 9,81 m/s², h medida desde el piso de la cámara. V = volumen de agua bajo el panel (0,5 m de espesor por metro de largo). En el dibujo: P son las flechas contra la orilla, F el punto de aplicación a h/3 y E la flecha dentro de la cámara.</p>
+  </details>
+
+  <details class="card" id="matCard" aria-label="Materiales">
+    <summary>Materiales y datos de resistencia</summary>
+    <ul class="mats">
+      <li><b class="sw" style="background:var(--barrier)"></b><span><strong>Bloque flotante</strong> · HDPE espumado reciclado<br>densidad 0,60 g/cm³, 40 % más ligero que el agua</span></li>
+      <li><b class="sw" style="background:var(--concrete)"></b><span><strong>Base y cimentación</strong> · concreto armado (ACI 318)<br>f′c = 280 kg/cm² (27,5 MPa)</span></li>
+      <li><b class="sw" style="background:var(--seal);color:#fff"></b><span><strong>Sellos</strong> · neopreno CR<br>dureza Shore A 60 ± 5</span></li>
+      <li><b class="sw" style="background:var(--steel)"></b><span><strong>Guías</strong> · acero inox. AISI 316L<br>fy = 240 MPa, fu = 580 MPa</span></li>
+    </ul>
+  </details>
+
+  <section class="card" aria-label="Alerta">
+    <div class="lights" id="lights">
+      <span class="lamp ok" id="lOk"><i></i>Normal</span>
+      <span class="lamp warn" id="lWarn"><i></i>Barrera activa</span>
+      <span class="lamp bad" id="lBad"><i></i>Rebose</span>
+      <button id="bSnd" type="button" style="min-height:40px;margin-left:auto">Sonido: apagado</button>
+    </div>
+  </section>
+
+  <p class="foot">Alturas de ejemplo tomadas del guion: la barrera se activa con el río a 1,2 m y está pensada para el máximo registrado, 2,5 m. Es una maqueta didáctica, no un modelo hidráulico del río Piura.</p>
+</main>
+
+<script>
+(function(){
+  var MR_C=[633, 630, 624, 616, 606, 596, 585, 573, 561, 548, 534, 520, 505, 489, 472, 454, 437, 420, 404, 391, 379, 368, 358, 350, 342, 334, 326, 318, 312, 306, 301, 297, 293, 290, 286, 283, 280, 276, 273, 269, 266, 263, 260, 257, 254, 251, 248, 246, 243, 241, 239, 236, 233, 230, 226, 222, 218, 213, 209, 204, 200, 197, 194, 191, 189, 188, 186, 185, 183, 182, 180, 178, 176, 173, 171, 168, 166, 164, 162, 162, 162, 163, 164, 166, 168, 170, 172, 175, 177, 179, 181, 183, 184, 185, 185, 186, 187, 188, 189, 190, 192, 193, 194, 196, 196, 196, 195, 194, 193, 192, 191], MR_H=[10.6, 10.5, 10.5, 10.7, 11.1, 11.6, 12.1, 12.5, 12.8, 13.1, 13.5, 14.3, 15.4, 16.6, 17.7, 18.1, 17.8, 16.9, 15.6, 14.4, 13.3, 12.2, 11.2, 10.2, 9.4, 8.9, 8.8, 8.7, 8.6, 8.3, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.2, 8.7, 9.2, 9.7, 10.3, 10.7, 10.9, 11.1, 11.2, 11.7, 12.5, 13.8, 15.5, 17.3, 18.7, 19.7, 20.0, 19.9, 19.5, 18.9, 18.4, 18.2, 18.3, 18.6, 19.1, 19.2, 18.7, 17.4, 15.6, 13.7, 12.1, 11.4, 11.5, 12.3, 13.2, 13.8, 13.9, 13.6, 13.0, 12.3, 11.6, 11.2, 10.9, 10.8, 10.6, 10.4, 10.2, 10.0, 9.8, 9.7, 9.7, 9.9, 10.2, 10.5, 10.8, 11.1, 11.4, 11.7, 11.9, 12.2, 12.5, 12.6, 12.6, 12.4, 12.2], MR_S=[80, 0, 96, 0, 112, 0, 128, 0, 144, 0, 160, 0, 176, 0, 0, 16, 16, 16, 32, 16, 48, 16, 64, 16, 80, 16, 96, 16, 112, 16, 128, 16, 144, 16, 160, 16, 176, 16, 0, 32, 16, 32, 32, 32, 48, 32, 64, 32, 80, 32, 96, 32, 112, 32, 128, 32, 144, 32, 160, 32, 0, 48, 16, 48, 32, 48, 48, 48, 64, 48, 80, 48, 96, 48, 112, 48, 128, 48, 144, 48, 160, 48, 0, 64, 16, 64, 32, 64, 48, 64, 64, 64, 80, 64, 96, 64, 112, 64, 128, 64, 144, 64, 64, 80, 80, 80, 96, 80, 112, 80, 128, 80, 144, 80, 80, 96, 96, 96, 112, 96, 128, 96, 144, 96, 64, 112, 80, 112, 96, 112, 112, 112, 128, 112, 64, 128, 80, 128, 96, 128, 112, 128, 128, 128, 144, 128, 80, 144, 96, 144, 112, 144, 128, 144, 144, 144, 80, 160, 96, 160, 112, 160, 128, 160, 144, 160, 80, 176, 96, 176, 112, 176, 128, 176, 80, 192, 96, 192, 112, 192, 80, 208, 96, 208, 112, 208, 128, 208, 144, 208, 160, 208, 96, 224, 112, 224, 128, 224, 144, 224, 160, 224, 112, 240, 128, 240, 144, 240, 160, 240, 112, 256, 128, 256, 144, 256, 160, 256, 736, 0, 752, 0, 768, 0, 784, 0, 800, 0, 736, 16, 752, 16, 768, 16, 784, 16, 800, 16, 720, 32, 736, 32, 752, 32, 768, 32, 784, 32, 800, 32, 816, 32, 704, 48, 720, 48, 736, 48, 752, 48, 768, 48, 784, 48, 800, 48, 816, 48, 832, 48, 688, 64, 704, 64, 720, 64, 736, 64, 752, 64, 768, 64, 784, 64, 800, 64, 816, 64, 832, 64, 656, 80, 672, 80, 688, 80, 704, 80, 720, 80, 736, 80, 752, 80, 768, 80, 784, 80, 800, 80, 816, 80, 832, 80, 848, 80, 864, 80, 608, 96, 624, 96, 640, 96, 656, 96, 672, 96, 688, 96, 704, 96, 720, 96, 736, 96, 752, 96, 768, 96, 784, 96, 800, 96, 816, 96, 832, 96, 848, 96, 864, 96, 576, 112, 592, 112, 608, 112, 624, 112, 640, 112, 656, 112, 672, 112, 688, 112, 704, 112, 720, 112, 736, 112, 752, 112, 768, 112, 784, 112, 800, 112, 816, 112, 832, 112, 848, 112, 864, 112, 880, 112, 896, 112, 544, 128, 560, 128, 576, 128, 592, 128, 608, 128, 624, 128, 640, 128, 656, 128, 672, 128, 688, 128, 704, 128, 720, 128, 736, 128, 752, 128, 768, 128, 784, 128, 800, 128, 816, 128, 832, 128, 848, 128, 864, 128, 880, 128, 896, 128, 544, 144, 560, 144, 576, 144, 592, 144, 608, 144, 624, 144, 640, 144, 656, 144, 672, 144, 688, 144, 704, 144, 720, 144, 736, 144, 752, 144, 768, 144, 784, 144, 800, 144, 816, 144, 832, 144, 848, 144, 864, 144, 880, 144, 896, 144, 512, 160, 528, 160, 544, 160, 560, 160, 576, 160, 592, 160, 608, 160, 624, 160, 640, 160, 656, 160, 672, 160, 688, 160, 704, 160, 720, 160, 736, 160, 752, 160, 768, 160, 784, 160, 800, 160, 816, 160, 832, 160, 848, 160, 864, 160, 880, 160, 512, 176, 528, 176, 544, 176, 560, 176, 576, 176, 592, 176, 608, 176, 624, 176, 640, 176, 656, 176, 672, 176, 688, 176, 704, 176, 720, 176, 736, 176, 752, 176, 768, 176, 784, 176, 800, 176, 816, 176, 832, 176, 848, 176, 512, 192, 528, 192, 544, 192, 560, 192, 576, 192, 592, 192, 608, 192, 624, 192, 640, 192, 656, 192, 672, 192, 688, 192, 704, 192, 720, 192, 736, 192, 752, 192, 768, 192, 784, 192, 800, 192, 816, 192, 832, 192, 848, 192, 512, 208, 528, 208, 544, 208, 560, 208, 576, 208, 592, 208, 608, 208, 624, 208, 640, 208, 656, 208, 672, 208, 688, 208, 704, 208, 720, 208, 736, 208, 752, 208, 768, 208, 784, 208, 800, 208, 816, 208, 496, 224, 512, 224, 528, 224, 544, 224, 560, 224, 576, 224, 592, 224, 608, 224, 624, 224, 640, 224, 656, 224, 672, 224, 688, 224, 704, 224, 720, 224, 736, 224, 752, 224, 768, 224, 784, 224, 496, 240, 512, 240, 528, 240, 544, 240, 560, 240, 576, 240, 592, 240, 608, 240, 624, 240, 640, 240, 656, 240, 672, 240, 688, 240, 704, 240, 720, 240, 736, 240, 752, 240, 768, 240, 784, 240, 480, 256, 496, 256, 512, 256, 528, 256, 544, 256, 560, 256, 576, 256, 592, 256, 608, 256, 624, 256, 640, 256, 656, 256, 672, 256, 688, 256, 704, 256, 720, 256, 736, 256, 752, 256, 768, 256, 512, 272, 528, 272, 544, 272, 560, 272, 576, 272, 592, 272, 608, 272, 624, 272, 640, 272, 656, 272, 672, 272, 688, 272, 704, 272, 720, 272, 736, 272, 752, 272, 768, 272, 528, 288, 544, 288, 560, 288, 576, 288, 592, 288, 608, 288, 624, 288, 640, 288, 656, 288, 672, 288, 688, 288, 704, 288, 720, 288, 736, 288, 752, 288, 768, 288, 528, 304, 544, 304, 560, 304, 576, 304, 592, 304, 608, 304, 624, 304, 640, 304, 656, 304, 672, 304, 688, 304, 704, 304, 720, 304, 736, 304, 752, 304, 512, 320, 528, 320, 544, 320, 560, 320, 576, 320, 592, 320, 608, 320, 624, 320, 640, 320, 656, 320, 672, 320, 688, 320, 704, 320, 720, 320, 736, 320, 752, 320, 496, 336, 512, 336, 528, 336, 544, 336, 560, 336, 576, 336, 592, 336, 608, 336, 624, 336, 640, 336, 656, 336, 672, 336, 688, 336, 464, 352, 480, 352, 496, 352, 512, 352, 528, 352, 544, 352, 560, 352, 576, 352, 592, 352, 608, 352, 624, 352, 640, 352, 656, 352, 432, 368, 448, 368, 464, 368, 480, 368, 496, 368, 512, 368, 528, 368, 544, 368, 560, 368, 576, 368, 592, 368, 608, 368, 624, 368, 640, 368, 432, 384, 448, 384, 464, 384, 480, 384, 496, 384, 512, 384, 528, 384, 544, 384, 560, 384, 576, 384, 592, 384, 608, 384, 416, 400, 432, 400, 448, 400, 464, 400, 480, 400, 496, 400, 512, 400, 528, 400, 544, 400, 560, 400, 576, 400, 592, 400, 416, 416, 432, 416, 448, 416, 464, 416, 480, 416, 496, 416, 512, 416, 528, 416, 544, 416, 560, 416, 576, 416, 416, 432, 432, 432, 448, 432, 464, 432, 480, 432, 496, 432, 512, 432, 528, 432, 544, 432, 560, 432, 400, 448, 416, 448, 432, 448, 448, 448, 464, 448, 480, 448, 496, 448, 512, 448, 528, 448, 544, 448, 352, 464, 368, 464, 384, 464, 400, 464, 416, 464, 432, 464, 448, 464, 464, 464, 480, 464, 496, 464, 512, 464, 528, 464, 544, 464, 352, 480, 368, 480, 384, 480, 400, 480, 416, 480, 432, 480, 448, 480, 464, 480, 480, 480, 496, 480, 512, 480, 352, 496, 368, 496, 384, 496, 352, 512, 368, 512, 352, 528, 368, 528, 416, 624, 416, 640, 400, 656, 416, 656, 432, 656, 480, 656, 496, 656, 384, 672, 400, 672, 416, 672, 432, 672, 448, 672, 464, 672, 480, 672, 496, 672, 512, 672, 528, 672, 384, 688, 400, 688, 416, 688, 432, 688, 448, 688, 464, 688, 480, 688, 496, 688, 512, 688, 528, 688, 368, 704, 384, 704, 400, 704, 416, 704, 432, 704, 448, 704, 464, 704, 480, 704, 496, 704, 512, 704, 528, 704, 352, 720, 368, 720, 384, 720, 400, 720, 416, 720, 432, 720, 448, 720, 480, 720, 496, 720, 512, 720, 528, 720, 352, 736, 368, 736, 384, 736, 400, 736, 416, 736, 432, 736, 448, 736, 464, 736, 480, 736, 496, 736, 512, 736, 528, 736, 464, 752, 480, 752, 496, 752, 512, 752, 528, 752, 464, 768, 480, 768, 496, 768, 512, 768, 464, 784, 480, 784, 496, 784, 512, 784, 464, 800, 480, 800, 496, 800, 512, 800, 480, 816, 496, 816, 512, 816];
+  var $=function(id){return document.getElementById(id)};
+  var Y0=250, PX=62, DX=14, DY=-9, SL=0;
+  var Y=function(m){return Y0-PX*m};
+  var PL=function(y){return 113+SL*(250-y)}, PR=function(y){return PL(y)+26};
+  var CRIT=1.2, GROUND=1.5, RHO=1000, G=9.81, T=0.5;
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var canAnim=!!(Element.prototype.animate);
+  var k=reduce?8:1;
+  var level=0.8, target=null, f=0, mode='bar', sound=false, ctx=null, lastRed=false, lastMsg='';
+  var lv=level, lvV=0, fd=0, fdV=0, ag=0, tt=0, view='corte', busy=false, mapPct=0;
+  var fmt=function(v){return v.toFixed(2).replace('.',',')};
+  var fm1=function(v){return v.toFixed(1).replace('.',',')};
+  var NS='http://www.w3.org/2000/svg';
+  var n1=function(v){return v.toFixed(1)};
+  var pts=function(a){return a.map(function(p){return n1(p[0])+','+n1(p[1])}).join(' ')};
+  var line=function(a){return a.map(function(p){return n1(p[0])+','+n1(p[1])}).join(' L')};
+  document.querySelectorAll('g[data-f]').forEach(function(g){
+    var b=document.createElementNS(NS,'polygon');b.setAttribute('fill','var(--'+g.getAttribute('data-f')+')');
+    var o=document.createElementNS(NS,'polygon');o.setAttribute('class',g.getAttribute('data-c'));
+    g.appendChild(b);g.appendChild(o);
+    var p=g.getAttribute('data-p');
+    if(p){b.setAttribute('points',p);o.setAttribute('points',p)}
+  });
+  function setF(id,a){var p=pts(a);var c=$(id).children;c[0].setAttribute('points',p);c[1].setAttribute('points',p)}
+  function clearF(id){setF(id,[[0,0],[0,0],[0,0]])}
+  var amp=0;
+  function wave(x0,x1,y,ph){
+    var a=[],n=Math.max(2,Math.round((x1-x0)/6));
+    for(var i=0;i<=n;i++){var x=x0+(x1-x0)*i/n;
+      a.push([x,y+amp*(Math.sin(x*0.11+tt*2.4+ph)+0.5*Math.sin(x*0.23-tt*1.9))])}
+    return a;
+  }
+  function fill(id,hid,w,bottom){
+    var d='M'+n1(w[0][0])+','+bottom+' L'+line(w)+' L'+n1(w[w.length-1][0])+','+bottom+'Z';
+    $(id).setAttribute('d',d);
+    if(hid)$(hid).setAttribute('d','M'+line(w));
+  }
+  function none(id,hid){$(id).setAttribute('d','');if(hid)$(hid).setAttribute('d','')}
+
+  function beep(){
+    if(!sound)return;
+    try{
+      ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+      var t=ctx.currentTime;
+      for(var i=0;i<3;i++){
+        var o=ctx.createOscillator(),g=ctx.createGain();
+        o.type='square';o.frequency.value=i%2?740:880;
+        g.gain.setValueAtTime(0.0001,t+i*0.28);g.gain.exponentialRampToValueAtTime(0.15,t+i*0.28+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.28+0.22);
+        o.connect(g);g.connect(ctx.destination);o.start(t+i*0.28);o.stop(t+i*0.28+0.24);
+      }
+    }catch(e){}
+  }
+  function spring(x,v,tg,kk,c,dt){var a=kk*(tg-x)-c*v; v+=a*dt; x+=v*dt; return [x,v]}
+
+  function step(dt){
+    if(target!==null){
+      var d=target-level, v=0.4*k*dt;
+      if(Math.abs(d)<=v){level=target;target=null}else level+=Math.sign(d)*v;
+      $('lvl').value=level;
+    }
+    var want=(mode==='bar'&&level>=CRIT)?1:0;
+    var rate=(want?0.5:0.35)*k*dt;
+    if(Math.abs(want-f)<=rate)f=want;else f+=Math.sign(want-f)*rate;
+    if(reduce){lv=level;lvV=0;fd=f;fdV=0}
+    else{
+      var r=spring(lv,lvV,level,60,9,dt);lv=r[0];lvV=r[1];
+      r=spring(fd,fdV,f,40,5,dt);fd=Math.max(0,r[0]);fdV=r[1];
+      if(lv<0.05)lv=0.05;
+    }
+    tt+=dt;
+    var tg=Math.min(1,(Math.abs(lvV)+Math.abs(fdV))*1.6+((lv>GROUND+fd+0.001)?0.25:0));
+    ag+=(tg-ag)*Math.min(1,dt*5);
+    amp=reduce?0:0.7+ag*3;
+  }
+
+  /* ---------- vista lateral ---------- */
+  function render(){
+    var top=GROUND+f, spill=level>top+0.001, flood=spill?level-top:0;
+    var topD=GROUND+fd, spillD=lv>topD+0.001, floodD=spillD?lv-topD:0;
+    var yw=Y(lv), yt=Y(topD), yb=yt+93;
+    var xe=96;
+    if(lv>GROUND) xe=spillD?PL(yt)+33:PL(yw)-7;
+    // río
+    var w=wave(0,96,yw,0);
+    fill('rv','',w,Y0);
+    if(lv>GROUND){
+      var w2=wave(96,xe,yw,0), extra='';
+      if(spillD) extra=' L'+n1(xe)+','+n1(yt)+' L'+n1(PL(yt)-7)+','+n1(yt);
+      $('rvO').setAttribute('d','M96,157 L'+line(w2)+extra+' L'+n1(PL(157)-7)+',157Z');
+      var all=wave(0,xe,yw,0);
+      $('rvH').setAttribute('d','M'+line(all));
+      setF('rvTop',all.concat([[xe+DX,yw+DY],[DX,yw+DY]]));
+    }else{
+      none('rvO','');
+      $('rvH').setAttribute('d','M'+line(w));
+      setF('rvTop',w.concat([[96,yw+DY],[DX,yw+DY]]));
+    }
+    // cámara
+    if(fd>0.004){
+      var amp0=amp;amp=amp*0.7;
+      var cw=wave(100,170,Y(fd),1.3);
+      amp=amp0;
+      fill('chW','chH',cw,Y0);
+    }else none('chW','chH');
+    // rampa
+    $('panel').setAttribute('points',pts([[PL(yt),yt],[PR(yt),yt],[PR(yb),yb],[PL(yb),yb]]));
+    $('sealL').setAttribute('points',pts([[PL(yt)-2,yt],[PL(yt),yt],[PL(yb),yb],[PL(yb)-2,yb]]));
+    $('sealR').setAttribute('points',pts([[PR(yt),yt],[PR(yt)+2,yt],[PR(yb)+2,yb],[PR(yb),yb]]));
+    setF('pTop',[[PL(yt),yt],[PR(yt),yt],[PR(yt)+DX,yt+DY],[PL(yt)+DX,yt+DY]]);
+    setF('pSide',[[PR(yt)+2,yt],[PR(yt)+2+DX,yt+DY],[PR(yb)+2+DX,yb+DY],[PR(yb)+2,yb]]);
+    $('pipe').setAttribute('fill',(mode==='bar'&&level>=CRIT)?'var(--water)':'var(--off)');
+    $('tPanel').textContent=mode==='bar'?'Barrera':'Dique fijo';
+    $('tPanel').setAttribute('x',PL(yt)+3);
+    $('tPanel').setAttribute('y',Math.max(yt-6,74));
+    // inundación de casas
+    var yf=157-PX*floodD;
+    if(floodD>0.005){
+      var fw=wave(146,284,yf,2);
+      fill('fl','flH',fw,157);
+      setF('fTop',fw.concat([[284+DX,yf+DY],[146+DX,yf+DY]]));
+      setF('fSide',[[284,yf],[284+DX,yf+DY],[284+DX,148],[284,157]]);
+    }else{none('fl','flH');clearF('fTop');clearF('fSide')}
+    // gotas
+    var filling=(mode==='bar'&&level>=CRIT&&fd<0.98&&!reduce&&Y(fd)>178);
+    for(var i=0;i<3;i++){
+      var c=$('dr'+i);
+      if(filling){var p=(tt*1.3+i/3)%1, yy=178+(Y(fd)-178)*p*p;
+        c.setAttribute('cx',106+SL*(250-yy)+5);c.setAttribute('cy',yy);c.setAttribute('visibility','visible')}
+      else c.setAttribute('visibility','hidden');
+    }
+    for(var j=0;j<4;j++){
+      var s=$('sp'+j);
+      if(spillD&&!reduce){var q=(tt*1.1+j/4)%1;
+        s.setAttribute('cx',PR(yt)+4+(26+j*9)*q);s.setAttribute('cy',yt-6-38*q+40*q*q);s.setAttribute('visibility','visible')}
+      else s.setAttribute('visibility','hidden');
+    }
+    // física
+    var Pk=RHO*G*level/1000, Fk=0.5*RHO*G*level*level/1000, V=T*f, Ek=RHO*G*V/1000;
+    var PkD=RHO*G*lv/1000, span=Y0-yw, pw=PkD*1.3;
+    var ar=$('pArrows').children;
+    for(var a=0;a<5;a++){
+      var fr=(a+1)/5.5, len=pw*fr, yy2=yw+span*fr, L=ar[a];
+      if(len<3||lv<0.3){L.setAttribute('visibility','hidden')}
+      else{L.setAttribute('visibility','visible');L.setAttribute('x1',96-len);L.setAttribute('x2',94.5);L.setAttribute('y1',yy2);L.setAttribute('y2',yy2)}
+    }
+    var showTags=lv>=0.7, yF=Y(lv/3);
+    $('fDot').setAttribute('cy',yF);$('fDot').setAttribute('visibility',lv>=0.3?'visible':'hidden');
+    $('tP').textContent='P = '+fm1(Pk)+' kPa';$('tP').setAttribute('y',Math.min(yw+14,236));$('tP').setAttribute('visibility',showTags?'visible':'hidden');
+    $('tF').textContent='F = '+fm1(Fk)+' kN/m';$('tF').setAttribute('y',Math.min(yF+4,244));$('tF').setAttribute('visibility',showTags?'visible':'hidden');
+    var showE=fd>0.22;
+    $('tE').textContent='E = '+fm1(Ek)+' kN/m';$('tE').setAttribute('y',Y(fd)+16);$('tE').setAttribute('visibility',showE?'visible':'hidden');
+    var e=$('eArr');
+    if(showE){var ym=Y(fd)+Math.min(42,PX*fd*0.8), cx=126+SL*(250-ym);
+      e.setAttribute('visibility','visible');e.setAttribute('x1',cx);e.setAttribute('x2',cx);e.setAttribute('y1',ym);e.setAttribute('y2',Y(fd)+4)}
+    else e.setAttribute('visibility','hidden');
+    $('pP').textContent=fm1(Pk)+' kPa';
+    $('pPf').textContent='P = ρ·g·h = 1000 × 9,81 × '+fmt(level)+' m';
+    $('pF').textContent=fm1(Fk)+' kN/m';
+    $('pFf').textContent='F = ½·ρ·g·h² = ½ × 1000 × 9,81 × '+fmt(level)+'²';
+    $('pE').textContent=fm1(Ek)+' kN/m';
+    $('pEf').textContent='E = ρ·g·V = 1000 × 9,81 × '+fmt(V)+' m³';
+    // lecturas
+    $('rLevel').textContent=fmt(level)+' m';
+    $('rTop').textContent=fmt(top)+' m';
+    $('rHouses').textContent=flood>0.03?'Inundadas':'Protegidas';
+    $('lvlOut').textContent=fmt(level);
+    var red=mode==='bar'&&spill, warn=mode==='bar'&&level>=CRIT&&!red, ok=mode==='bar'&&!warn&&!red;
+    $('lOk').classList.toggle('on',ok);$('lWarn').classList.toggle('on',warn);$('lBad').classList.toggle('on',red);
+    if(red&&!lastRed)beep();
+    lastRed=red;
+    var m;
+    if(mode==='fix'){
+      m=level>GROUND?'El agua pasa por encima del dique fijo y entra a las casas.':'El dique fijo aguanta hasta 1,5 m. No avisa ni se adapta.';
+    }else if(red){
+      m='Rebose: el agua superó el máximo registrado de 2,5 m. Alerta roja, hay que evacuar.';
+    }else if(level<CRIT){
+      m=f>0.02?'El río bajó: la cámara se vacía y la barrera se guarda.':'El río está bajo. La barrera descansa bajo tierra.';
+    }else if(f<0.99){
+      m='El agua entra a la cámara y la barrera empieza a subir sola.';
+    }else{
+      m='Barrera arriba: el río no pasa. Llega hasta el máximo registrado (2,5 m).';
+    }
+    if(m!==lastMsg){$('status').textContent=m;lastMsg=m}
+  }
+
+  /* ---------- vista de mapa ---------- */
+  var MN=MR_C.length, VIS=2.1, ESC=360, BOFF=1.15, NS_=MR_S.length/2;
+  function renderMap(){
+    var topD=GROUND+fd, spillD=lv>topD+0.001;
+    var sc=lv<=GROUND?0.45+0.55*(Math.max(lv,0.2)-0.2)/1.3:1;
+    var stand=lv>GROUND?0.15*Math.min(1,lv-GROUND):0;
+    var E=spillD?ESC*(lv-topD)/1.5:0;
+    var out=lv>GROUND, A=[],B=[],C=[],OL=[],OR=[],BL=[],BR=[],ho=[];
+    var rp=amp*0.9;
+    for(var i=0;i<MN;i++){
+      var y=i*8, c=MR_C[i], hv=MR_H_[i]=MR_H[i]*VIS, r=rp*Math.sin(y*0.05+tt*2.2);
+      var hc=hv*sc+r; A.push([c-hc,y]); B.push([c+hc,y]); C.push([c,y]);
+      var h2=out?hv*(1+stand)+E+r:0; ho.push(h2);
+      if(out){OL.push([c-h2*0.6,y]);OR.push([c+h2,y])}
+      var off=hv*BOFF+7; BL.push([c-off,y]); BR.push([c+off,y]);
+    }
+    var d1='M'+line(A)+' L'+line(B.slice().reverse())+'Z';
+    $('mIn').setAttribute('d',d1);
+    var d2=out?'M'+line(OL)+' L'+line(OR.slice().reverse())+'Z':'';
+    $('mOut').setAttribute('d',d2);$('mClipP').setAttribute('d',d2);
+    $('mFlow').setAttribute('d','M'+line(C));
+    var bl=$('bL'),br=$('bR');
+    if(mode==='bar'){
+      var wd=3+6*Math.min(1,fd), da=fd>0.6?'16 4':'3 9';
+      [bl,br].forEach(function(p){p.setAttribute('stroke','var(--barrier)');p.setAttribute('stroke-width',wd);p.setAttribute('stroke-dasharray',da);p.setAttribute('opacity',0.55+0.45*Math.min(1,fd))});
+    }else{
+      [bl,br].forEach(function(p){p.setAttribute('stroke','var(--struct)');p.setAttribute('stroke-width',5);p.setAttribute('stroke-dasharray','');p.setAttribute('opacity',1)});
+    }
+    bl.setAttribute('d','M'+line(BL));br.setAttribute('d','M'+line(BR));
+    var cnt=0;
+    if(out){for(var s=0;s<NS_;s++){var x=MR_S[2*s],yy=MR_S[2*s+1],ii=Math.min(MN-1,Math.round(yy/8));
+      if(Math.abs(x-MR_C[ii])<(x<MR_C[ii]?ho[ii]*0.6:ho[ii]))cnt++}}
+    mapPct=Math.round(100*cnt/NS_);
+    var t='El dique cubre todo este tramo y sigue más allá del mapa. Zona urbana alcanzada por el agua: '+mapPct+' % (esquema).';
+    if($('mapInfo').textContent!==t)$('mapInfo').textContent=t;
+  }
+  var MR_H_=[];
+
+  /* ---------- transiciones neón ---------- */
+  function outlineOf(svg,ov,sw){
+    ov.textContent='';
+    var gl=document.createElementNS(NS,'g'),gc=document.createElementNS(NS,'g');
+    gl.setAttribute('opacity','.22');
+    var els=[];
+    svg.querySelectorAll('rect,polygon,path,line,circle').forEach(function(e){
+      if(e.closest('defs,clipPath,marker,#mats,.mk,#pArrows'))return;
+      var cl=e.getAttribute('class')||'';
+      if(/\b(tp|sd|sl|hl|arr|flow)\b/.test(cl))return;
+      if(e.id&&/^(dr|sp|fDot|eArr|ov)/.test(e.id))return;
+      if(e.getAttribute('visibility')==='hidden')return;
+      if(e.tagName==='path'&&!e.getAttribute('d'))return;
+      if(e.tagName==='polygon'&&e.parentNode.hasAttribute&&e.parentNode.hasAttribute('data-f')&&e!==e.parentNode.firstChild)return;
+      if(e.tagName==='rect'&&parseFloat(e.getAttribute('width'))>=900)return;
+      var len=0;try{len=e.getTotalLength()}catch(x){}
+      if(!(len>2))return;
+      els.push([e,len]);
+    });
+    var out=[];
+    els.forEach(function(p){
+      [[gl,sw*3.2],[gc,sw]].forEach(function(t){
+        var ce=p[0].cloneNode(false);
+        ['id','class','opacity','style','clip-path','marker-end','fill-opacity','stroke-opacity','stroke-dasharray','visibility'].forEach(function(a){ce.removeAttribute(a)});
+        ce.setAttribute('fill','none');ce.setAttribute('stroke','var(--neon)');ce.setAttribute('stroke-width',t[1]);
+        ce.setAttribute('stroke-linejoin','round');ce.setAttribute('stroke-linecap','round');
+        ce.style.strokeDasharray=p[1]+' '+p[1];
+        t[0].appendChild(ce);out.push([ce,p[1]]);
+      });
+    });
+    ov.appendChild(gl);ov.appendChild(gc);
+    return out;
+  }
+  function anim(el,kf,o){var a=el.animate(kf,o);return a.finished.catch(function(){})}
+  function drawIn(list,dur){
+    var n=list.length/2, ps=[];
+    list.forEach(function(p,i){ps.push(anim(p[0],[{strokeDashoffset:p[1]},{strokeDashoffset:0}],{duration:dur,delay:Math.min(260,Math.floor(i/2)*(260/Math.max(1,n))),easing:'ease-out',fill:'both'}))});
+    return Promise.all(ps);
+  }
+  function retract(list,dur){
+    var ps=[];
+    list.forEach(function(p){ps.push(anim(p[0],[{strokeDashoffset:0},{strokeDashoffset:-p[1]}],{duration:dur,easing:'ease-in',fill:'both'}))});
+    return Promise.all(ps);
+  }
+  function fade(el,a,b,ms){
+    var an=el.animate([{opacity:a},{opacity:b}],{duration:ms,fill:'forwards'});
+    return an.finished.then(function(){el.style.opacity=b;an.cancel()},function(){el.style.opacity=b});
+  }
+  function show(name){
+    var c=$('scene'),m=$('map');
+    c.style.visibility=name==='corte'?'visible':'hidden';c.style.opacity=name==='corte'?1:0;
+    m.style.visibility=name==='mapa'?'visible':'hidden';m.style.opacity=name==='mapa'?1:0;
+    view=name;
+    $('matCard').hidden=name!=='corte';
+    $('mapInfo').hidden=name!=='mapa';
+    $('vCorte').checked=name==='corte';$('vMapa').checked=name==='mapa';
+  }
+  function switchTo(name){
+    if(busy||name===view){show(view);return Promise.resolve()}
+    if(!canAnim||reduce){show(name);return Promise.resolve()}
+    busy=true;
+    var A=view==='corte'?$('scene'):$('map'), B=name==='corte'?$('scene'):$('map');
+    var ovA=view==='corte'?$('ovA'):$('ovB'), ovB=name==='corte'?$('ovA'):$('ovB');
+    var swA=view==='corte'?1.3:4, swB=name==='corte'?1.3:4;
+    renderMap();render();
+    var la=outlineOf(A,ovA,swA), lb=outlineOf(B,ovB,swB);
+    ovA.style.opacity=1;ovB.style.opacity=1;
+    var st=$('stage');st.classList.add('dark');
+    return fade(A,1,0,260).then(function(){
+      A.style.visibility='hidden';
+      return Promise.all([retract(la,450),drawIn(lb,700)]);
+    }).then(function(){
+      B.style.visibility='visible';
+      $('matCard').hidden=name!=='corte';$('mapInfo').hidden=name!=='mapa';
+      return Promise.all([fade(B,0,1,380),fade(ovB,1,0,380)]);
+    }).then(function(){
+      ovA.textContent='';ovB.textContent='';ovA.style.opacity=1;ovB.style.opacity=0;
+      st.classList.remove('dark');show(name);busy=false;
+    }).catch(function(){ovA.textContent='';ovB.textContent='';st.classList.remove('dark');show(name);busy=false});
+  }
+  function intro(){
+    if(!canAnim||reduce){show('corte');return}
+    busy=true;
+    var A=$('scene');A.style.opacity=0;
+    render();
+    var st=$('stage');st.classList.add('dark');
+    var la=outlineOf(A,$('ovA'),1.3);
+    drawIn(la,900).then(function(){
+      return Promise.all([fade(A,0,1,420),fade($('ovA'),1,0,420)]);
+    }).then(function(){$('ovA').textContent='';$('ovA').style.opacity=1;st.classList.remove('dark');busy=false;show('corte')})
+    .catch(function(){$('ovA').textContent='';st.classList.remove('dark');A.style.opacity=1;busy=false;show('corte')});
+  }
+
+  var last=performance.now();
+  function tick(now){
+    var dt=Math.min(0.05,(now-last)/1000);last=now;
+    step(dt);render();
+    if(view==='mapa')renderMap();
+    requestAnimationFrame(tick);
+  }
+
+  $('bUp').addEventListener('click',function(){target=2.0});
+  $('bDown').addEventListener('click',function(){target=0.4});
+  $('lvl').addEventListener('input',function(e){level=parseFloat(e.target.value);target=null});
+  document.querySelectorAll('input[name=mode]').forEach(function(r){
+    r.addEventListener('change',function(){mode=r.value;lastRed=false;})
+  });
+  document.querySelectorAll('input[name=view]').forEach(function(r){
+    r.addEventListener('change',function(){switchTo(r.value)})
+  });
+  $('bSnd').addEventListener('click',function(){
+    sound=!sound;$('bSnd').textContent='Sonido: '+(sound?'encendido':'apagado');
+    if(sound)beep();
+  });
+  show('corte');
+  render();requestAnimationFrame(tick);
+  intro();
+})();
+</script>
+
+</body></html>
